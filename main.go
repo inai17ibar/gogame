@@ -4,55 +4,31 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
-type UserInfo struct {
-	Name     string `json:"name"`
-	Id       int    `json:"id"`
-	Password string `json:"password"`
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Home ")
 }
 
-type JWT struct {
-	Token string `json:"token"`
+func signupHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Signup.")
 }
 
-type Error struct {
-	Message string `json:"message"`
-}
-
-func signup(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("call signup.")
-}
-
-func login(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("call login")
-}
-
-// func createUser(w http.ResponseWriter, r *http.Request) {
-// 	fmt.Println("post CreatUser request.")
-// }
-
-// func getUser(w http.ResponseWriter, r *http.Request) {
-// 	fmt.Println("get User request.")
-// 	json.NewEncoder(w).Encode(UserInfo.Name)
-// }
-
-// func updateUser(w http.ResponseWriter, r *http.Request) {
-// 	fmt.Println("put UpdateUser request.")
-// }
-
-func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome to the Api demo!")
-	//sign up and sign in page
-	fmt.Println("Endpoint Hit: demo page")
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Login")
 }
 
 func handleRequests() {
-	http.HandleFunc("/", home)
+	// ルーターのイニシャライズ
+	router := mux.NewRouter()
 
-	//webぺージにリダイレクトする
-	http.HandleFunc("/signup", signup)
-	http.HandleFunc("/login", login)
+	// endpoints
+	router.HandleFunc("/", homeHandler)
+	router.HandleFunc("/signup", signupHandler)
+	router.HandleFunc("/login", loginHandler)
+	http.Handle("/", router)
 
 	log.Println("start api server :received 8080 port")
 
