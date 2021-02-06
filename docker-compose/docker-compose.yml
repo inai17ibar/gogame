@@ -1,0 +1,24 @@
+version: '3' 
+
+services:
+
+  mysql: # Mysql container
+        container_name: gogame-mysql
+        image: mysql:5.7
+        restart: always
+        ports:
+            - "3306:3306"
+        volumes:
+            # 初期データを投入するSQLが格納されているdir
+            - ./init:/docker-entrypoint-initdb.d
+            # 永続化するときにマウントするdir
+            - ./data:/var/lib/mysql
+            - ./logs:/var/log/mysql
+            - ./conf:/etc/mysql/conf.d
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: sample
+            MYSQL_USER:     test
+            MYSQL_PASSWORD: password
+            TZ: Asia/Tokyo
+        tty: true
