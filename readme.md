@@ -16,17 +16,22 @@ TechTrain MISSION ゲームAPI入門仕様
 MacOSX
 ```bash
 brew install go
+
 brew install docker
 #1.25.4 の部分は任意のバージョン
 sudo curl -L https://github.com/docker/compose/releases/download/1.27.4/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+# macならDocker Desktopをいれたらcomposeもはいる
 
 # go libraries
 go get -u github.com/gorilla/mux
+go get -u github.com/go-sql-driver/mysql
 ```
 
 # Build
 ```bash
 go build
+# buildしてそのまま実行
+go run
 ```
 
 # Usage

@@ -1,14 +1,15 @@
-create database gogame_db;
+create database if not exists gogame_db;
 
-create table gogame_db.user_table
+create table if not exists gogame_db.user_table
 (
-    id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
-    email varchar(30) NOT NULL DEFAULT '',
-    username varchar(32) NOT NULL DEFAULT '',
+    id INT AUTO_INCREMENT UNIQUE NOT NULL PRIMARY KEY,
+    username varchar(32) UNIQUE NOT NULL DEFAULT '',
+    password varchar(32) NOT NULL DEFAULT '',
+    session_id int(32) DEFAULT 0,
     created datetime DEFAULT CURRENT_TIMESTAMP
 );
 
 insert into gogame_db.user_table 
-(id, email, username) VALUES
-(101, 'foo@example.com', 'Foo bar'),
-(212, 'bar@example.com', 'Hoge hoge');
+(username, password) VALUES
+('Soichiro.Inatani', 'inatani'),
+('inai17ibar', '17tani');
