@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,12 +14,37 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func errorInResponse(w http.ResponseWriter, status int, error Error) {
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(error)
+	return
+}
+
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Home ")
 }
 
 func signupHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Signup.")
+	var user User
+	var error Error
+
+	fmt.Println(r.Body)
+
+	json.NewDecoder(r.Body).Decode(&user)
+
+	if user.Name == "" {
+		error.Message = "Nameは必須です。"
+		errorInResponse(w, http.StatusBadRequest, error)
+		return
+	}
+
+	if user.Password == "" {
+		error.Message = "パスワードは必須です。"
+		errorInResponse(w, http.StatusBadRequest, error)
+		return
+	}
+	//check data
+	fmt.Println(user)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +57,7 @@ func handleRequests() {
 
 	// endpoints
 	router.HandleFunc("/", homeHandler)
-	router.HandleFunc("/signup", signupHandler)
+	router.HandleFunc("/signup", signupHandler).Methods("POST")
 	router.HandleFunc("/login", loginHandler)
 	http.Handle("/", router)
 
