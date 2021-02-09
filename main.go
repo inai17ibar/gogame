@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/dgrijalva/jwt-go"
+
 	"./tool"
 	"golang.org/x/crypto/bcrypt"
 
@@ -24,6 +26,29 @@ func errorInResponse(w http.ResponseWriter, status int, error Error) {
 func responseByJSON(w http.ResponseWriter, data interface{}) {
 	json.NewEncoder(w).Encode(data)
 	return
+}
+
+func createToken(user User) (string, error) {
+	var err error
+
+	secret := "secret"
+
+	//jst structure {base64 encoded header. paylead. signature}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"name": user.Name,
+		"iss":  "__init__", //JWTの発行者をいれるべき？
+	})
+
+	var tokenString string
+	tokenString, err = token.SignedString([]byte(secret))
+
+	fmt.Println("tokenString:", tokenString)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return tokenString, nil
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +108,15 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Login")
+	var user User
+	json.NewDecoder(r.Body).Decode(&user)
+	token, err := createToken(user)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf(token)
 }
 
 func handleRequests() {
@@ -93,7 +126,7 @@ func handleRequests() {
 	// endpoints
 	router.HandleFunc("/", homeHandler)
 	router.HandleFunc("/signup", signupHandler).Methods("POST")
-	router.HandleFunc("/login", loginHandler)
+	router.HandleFunc("/login", loginHandler).Methods("GET")
 	http.Handle("/", router)
 
 	log.Println("start api server :received 8080 port")
