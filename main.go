@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 
@@ -84,13 +85,6 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 	user.Password = string(hash)
 	fmt.Println("Converted Password:", user.Password)
 
-	info := tool.DatabaseInfo{}
-	db, err = sql.Open("mysql", info.GetDBUrl())
-	if err != nil {
-		panic(err)
-	}
-	log.Println("Connected to mysql.")
-
 	sql_query := "INSERT INTO gogame_db.user_table (username, password) VALUES (?, ?)"
 	_, err = db.Exec(sql_query, user.Name, user.Password)
 
@@ -109,14 +103,61 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
+	var error Error
+
 	json.NewDecoder(r.Body).Decode(&user)
+
+	if user.Name == "" {
+		error.Message = "Username is invalid."
+		errorInResponse(w, http.StatusBadRequest, error)
+		return
+	}
+
+	if user.Password == "" {
+		error.Message = "Password is invalid."
+		errorInResponse(w, http.StatusBadRequest, error)
+		return
+	}
+
+	password := user.Password
+	fmt.Println("input password: ", password)
+
+	var time time.Time
+	//get auth key of user info from db.
+	row := db.QueryRow("select * from gogame_db.user_table where username = ?", &user.Name)
+	err := row.Scan(&user.ID, &user.Name, &user.Password, &user.SessionId, &time)
+
+	if err != nil {
+		if err == sql.ErrNoRows { //https://golang.org/pkg/database/sql/#pkg-variables
+			error.Message = "Not found User."
+			errorInResponse(w, http.StatusBadRequest, error)
+		} else {
+			log.Fatal(err)
+		}
+	}
+
+	hasedPassword := user.Password
+	fmt.Println("hasedPassword(db): ", hasedPassword)
+
+	//password check
+	err = bcrypt.CompareHashAndPassword([]byte(hasedPassword), []byte(password))
+
+	if err != nil {
+		error.Message = "Invalid Password."
+		errorInResponse(w, http.StatusUnauthorized, error)
+		return
+	}
+
 	token, err := createToken(user)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf(token)
+	var jwt JWT
+	w.WriteHeader(http.StatusOK)
+	jwt.Token = token
+	responseByJSON(w, jwt)
 }
 
 func handleRequests() {
@@ -126,7 +167,7 @@ func handleRequests() {
 	// endpoints
 	router.HandleFunc("/", homeHandler)
 	router.HandleFunc("/signup", signupHandler).Methods("POST")
-	router.HandleFunc("/login", loginHandler).Methods("GET")
+	router.HandleFunc("/login", loginHandler).Methods("POST")
 	http.Handle("/", router)
 
 	log.Println("start api server :received 8080 port")
@@ -139,15 +180,15 @@ var db *sql.DB
 
 func main() {
 	// parmas.go から DB の URL を取得
-	// info := tool.DatabaseInfo{}
+	info := tool.DatabaseInfo{}
 
-	// var err error
-	// // sql.Open("mysql", "user:password@/dbname")
-	// db, err = sql.Open("mysql", info.GetDBUrl())
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// log.Println("Connected to mysql.")
+	var err error
+	// sql.Open("mysql", "user:password@/dbname")
+	db, err = sql.Open("mysql", info.GetDBUrl())
+	if err != nil {
+		panic(err)
+	}
+	log.Println("Connected to mysql.")
 
 	// //データベースへクエリを送信。引っ張ってきたデータがrowsに入る。
 	// rows, err := db.Query("SELECT * FROM gogame_db.user_table")
