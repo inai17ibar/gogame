@@ -148,7 +148,7 @@ func createUserInfo(w http.ResponseWriter, r *http.Request) {
 	responseByJSON(w, jwt)
 }
 
-func verify(w http.ResponseWriter, r *http.Request) {
+func verifyHandler(w http.ResponseWriter, r *http.Request) {
 	var token *jwt.Token
 
 	//headerからtokenをとりだし、検証する
@@ -184,7 +184,6 @@ func verify(w http.ResponseWriter, r *http.Request) {
 func getUserInfo(w http.ResponseWriter, r *http.Request) {
 	var user User
 	var error Error
-	var token *jwt.Token
 
 	tokenString := r.Header.Get("x-token")
 	if tokenString == "" {
@@ -198,11 +197,11 @@ func getUserInfo(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 		return
 	}
+
 	claims, ok := token.Claims.(jwt.MapClaims)
 	userID, ok := claims[userKey].(string)
 	if !ok {
 		fmt.Println("not found claims or userid")
-		return
 	}
 
 	//get userinfo from db.
@@ -223,6 +222,51 @@ func getUserInfo(w http.ResponseWriter, r *http.Request) {
 	responseByJSON(w, user)
 }
 
+func updateUserInfo(w http.ResponseWriter, r *http.Request) {
+	var user User
+	var error Error
+
+	tokenString := r.Header.Get("x-token")
+	if tokenString == "" {
+		fmt.Println("Not found token")
+		return
+	}
+
+	json.NewDecoder(r.Body).Decode(&user)
+	if user.Name == "" {
+		error.Message = "Nameは必須です。"
+		errorInResponse(w, http.StatusBadRequest, error)
+		return
+	}
+
+	//headerからtokenをとりだし、検証する
+	token, err := verifyToken(tokenString)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	oldUserName, ok := claims[userKey].(string)
+	if !ok {
+		fmt.Println("not found claims or userid")
+	}
+
+	//update values on db.
+	_, err = db.Exec("update gogame_db.user_table set username = ? where username = ?", user.Name, oldUserName)
+
+	if err != nil {
+		if err == sql.ErrNoRows { //https://golang.org/pkg/database/sql/#pkg-variables
+			error.Message = "Not found User."
+			errorInResponse(w, http.StatusBadRequest, error)
+		} else {
+			log.Fatal(err)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	responseByJSON(w, "")
+}
+
 func handleRequests() {
 	// ルーターのイニシャライズ
 	router := mux.NewRouter()
@@ -231,7 +275,8 @@ func handleRequests() {
 	router.HandleFunc("/", homeHandler)
 	router.HandleFunc("/user/create", createUserInfo).Methods("POST")
 	router.HandleFunc("/user/get", getUserInfo).Methods("GET")
-	router.HandleFunc("/verify", verify).Methods("GET")
+	router.HandleFunc("/user/update", updateUserInfo).Methods("PUT")
+	router.HandleFunc("/verify", verifyHandler).Methods("GET")
 
 	http.Handle("/", router)
 
