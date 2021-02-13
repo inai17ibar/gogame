@@ -74,12 +74,12 @@ func createToken(userName string) (string, error) {
 func verifyToken(tokenString string) (*jwt.Token, error) {
 
 	parsedToken, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// check signing method
+		// check signing method　型アサーションを使ってアルゴリズムをチェックしている
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			err := errors.New("Unexpected signing method")
 			return nil, err
 		}
-		return []byte("secret"), nil
+		return []byte("secret"), nil //検証に使うキーをいれる
 	})
 	if err != nil {
 		return nil, err
@@ -186,11 +186,27 @@ func getUserInfo(w http.ResponseWriter, r *http.Request) {
 	var error Error
 	var token *jwt.Token
 
+	tokenString := r.Header.Get("x-token")
+	if tokenString == "" {
+		fmt.Println("Not found token")
+		return
+	}
+
 	//headerからtokenをとりだし、検証する
-	token, err := verifyToken(r.Header.Get("x-token"))
+	token, err := verifyToken(tokenString)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	userID, ok := claims[userKey].(string)
+	if !ok {
+		fmt.Println("not found claims or userid")
+		return
+	}
 
 	//get userinfo from db.
-	row := db.QueryRow("select * from gogame_db.user_table where username = ?", &token.Claims)
+	row := db.QueryRow("select * from gogame_db.user_table where username = ?", userID)
 	err = row.Scan(&user.ID, &user.Name, &user.Password, &user.Created_date)
 
 	if err != nil {
@@ -202,6 +218,7 @@ func getUserInfo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	user.Password = "" // Passwordはいまはつかっていないが一応空にしておく
 	w.Header().Set("Content-Type", "application/json")
 	responseByJSON(w, user)
 }
