@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -46,14 +47,14 @@ func responseByJSON(w http.ResponseWriter, data interface{}) {
 	return
 }
 
-func createToken(userName string) (string, error) {
+func createToken(userId string) (string, error) {
 
 	//jwt structure {base64 encoded header. paylead. signature}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
 			"sub":   "AccessToken",
 			"iss":   "https://idp.gogame.com/", // 発行者
-			userKey: userName,
+			userKey: userId,
 			iatKey:  time.Now().Unix(),
 			expKey:  time.Now().Add(time.Hour * 72).Unix(),
 		})
@@ -134,8 +135,15 @@ func createUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//useridの取得
+	row := db.QueryRow("SELECT LAST_INSERT_ID()")
+	err = row.Scan(&user.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	//generate token
-	token, err := createToken(user.Name)
+	token, err := createToken(strconv.Itoa(user.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -146,39 +154,6 @@ func createUserInfo(w http.ResponseWriter, r *http.Request) {
 	jwt.Token = token
 	w.WriteHeader(http.StatusOK)
 	responseByJSON(w, jwt)
-}
-
-func verifyHandler(w http.ResponseWriter, r *http.Request) {
-	var token *jwt.Token
-
-	//headerからtokenをとりだし、検証する
-	token, err := verifyToken(r.Header.Get("x-token"))
-	if err != nil {
-		//errorInResponse(w, http.StatusBadRequest, error)
-		return
-	}
-	fmt.Println(token)
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		fmt.Println("not found claims")
-		return
-	}
-	fmt.Println(claims)
-	iat, ok := claims[iatKey].(float64)
-	if !ok {
-		fmt.Println("not found claims of iat")
-		return
-	}
-	fmt.Println(iat)
-	userID, ok := claims[userKey].(string)
-	if !ok {
-		fmt.Println("not found claims of userid")
-		return
-	}
-	fmt.Println(userID)
-
-	w.Header().Set("Content-Type", "application/json")
-	responseByJSON(w, nil)
 }
 
 func getUserInfo(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +180,7 @@ func getUserInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//get userinfo from db.
-	row := db.QueryRow("select * from gogame_db.user_table where username = ?", userID)
+	row := db.QueryRow("select * from gogame_db.user_table where id = ?", userID)
 	err = row.Scan(&user.ID, &user.Name, &user.Password, &user.Created_date)
 
 	if err != nil {
@@ -246,13 +221,13 @@ func updateUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
-	oldUserName, ok := claims[userKey].(string)
+	userId, ok := claims[userKey].(string)
 	if !ok {
 		fmt.Println("not found claims or userid")
 	}
 
 	//update values on db.
-	_, err = db.Exec("update gogame_db.user_table set username = ? where username = ?", user.Name, oldUserName)
+	_, err = db.Exec("update gogame_db.user_table set username = ? where id = ?", user.Name, userId)
 
 	if err != nil {
 		if err == sql.ErrNoRows { //https://golang.org/pkg/database/sql/#pkg-variables
@@ -276,7 +251,6 @@ func handleRequests() {
 	router.HandleFunc("/user/create", createUserInfo).Methods("POST")
 	router.HandleFunc("/user/get", getUserInfo).Methods("GET")
 	router.HandleFunc("/user/update", updateUserInfo).Methods("PUT")
-	router.HandleFunc("/verify", verifyHandler).Methods("GET")
 
 	http.Handle("/", router)
 
