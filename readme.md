@@ -70,6 +70,6 @@ docker-compose up -d
 ```
 
 Access Front webpage (仮)
-[http;//localhost:8080](http;//localhost:8080)
+[http://localhost:8080](http;//localhost:8080)
 
 

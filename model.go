@@ -1,10 +1,14 @@
 package main
 
+import (
+	"time"
+)
+
 type User struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Password  string `json:"password"`
-	SessionId int    `json:"session_id"`
+	ID           int       `json:"id"`
+	Name         string    `json:"name"`
+	Password     string    `json:"password"` //いまは使わない
+	Created_date time.Time `json:"created_date"`
 }
 
 type JWT struct {
