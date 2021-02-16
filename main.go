@@ -221,13 +221,13 @@ func updateUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
-	userId, ok := claims[userKey].(string)
+	userID, ok := claims[userKey].(string)
 	if !ok {
 		fmt.Println("not found claims or userid")
 	}
 
 	//update values on db.
-	_, err = db.Exec("update gogame_db.user_table set username = ? where id = ?", user.Name, userId)
+	_, err = db.Exec("update gogame_db.user_table set username = ? where id = ?", user.Name, userID)
 
 	if err != nil {
 		if err == sql.ErrNoRows { //https://golang.org/pkg/database/sql/#pkg-variables
@@ -242,6 +242,14 @@ func updateUserInfo(w http.ResponseWriter, r *http.Request) {
 	responseByJSON(w, "")
 }
 
+func getUserCharacters() {
+
+}
+
+func drawGacha() {
+
+}
+
 func handleRequests() {
 	// ルーターのイニシャライズ
 	router := mux.NewRouter()
@@ -251,6 +259,9 @@ func handleRequests() {
 	router.HandleFunc("/user/create", createUserInfo).Methods("POST")
 	router.HandleFunc("/user/get", getUserInfo).Methods("GET")
 	router.HandleFunc("/user/update", updateUserInfo).Methods("PUT")
+
+	router.HandleFunc("/gacha/draw", createUserInfo).Methods("POST")
+	router.HandleFunc("/character/list", createUserInfo).Methods("GET")
 
 	http.Handle("/", router)
 
