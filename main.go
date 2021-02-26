@@ -12,7 +12,8 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 
-	"./tool"
+	. "github.com/inai17ibar/gogame/model"
+	"github.com/inai17ibar/gogame/tool"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -182,7 +183,7 @@ func getUserInfo(w http.ResponseWriter, r *http.Request) {
 	//get userinfo from db.
 	row := db.QueryRow("select * from gogame_db.user_table where id = ?", userID)
 	err = row.Scan(&user.ID, &user.Name, &user.Password, &user.Created_date)
-
+	user.Password = "" // Passwordはいまはつかっていないが一応空にしておく
 	if err != nil {
 		if err == sql.ErrNoRows { //https://golang.org/pkg/database/sql/#pkg-variables
 			error.Message = "Not found User."
@@ -192,7 +193,6 @@ func getUserInfo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	user.Password = "" // Passwordはいまはつかっていないが一応空にしておく
 	w.Header().Set("Content-Type", "application/json")
 	responseByJSON(w, user)
 }
@@ -201,16 +201,16 @@ func updateUserInfo(w http.ResponseWriter, r *http.Request) {
 	var user User
 	var error Error
 
-	tokenString := r.Header.Get("x-token")
-	if tokenString == "" {
-		fmt.Println("Not found token")
-		return
-	}
-
 	json.NewDecoder(r.Body).Decode(&user)
 	if user.Name == "" {
 		error.Message = "Nameは必須です。"
 		errorInResponse(w, http.StatusBadRequest, error)
+		return
+	}
+
+	tokenString := r.Header.Get("x-token")
+	if tokenString == "" {
+		fmt.Println("Not found token")
 		return
 	}
 
@@ -242,12 +242,53 @@ func updateUserInfo(w http.ResponseWriter, r *http.Request) {
 	responseByJSON(w, "")
 }
 
-func getUserCharacters() {
+func getCharactersList(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func drawGacha() {
+func drawGachaHandler(w http.ResponseWriter, r *http.Request) {
+	var user User
+	var error Error
 
+	json.NewDecoder(r.Body).Decode(&user)
+	if user.Name == "" {
+		error.Message = "timesは必須です。"
+		errorInResponse(w, http.StatusBadRequest, error)
+		return
+	}
+
+	tokenString := r.Header.Get("x-token")
+	if tokenString == "" {
+		fmt.Println("Not found token")
+		return
+	}
+
+	//headerからtokenをとりだし、検証する
+	token, err := verifyToken(tokenString)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	userID, ok := claims[userKey].(string)
+	if !ok {
+		fmt.Println("not found claims or userid")
+	}
+
+	//draw gacha
+	_, err = db.Exec("update gogame_db.user_table set username = ? where id = ?", user.Name, userID)
+
+	if err != nil {
+		if err == sql.ErrNoRows { //https://golang.org/pkg/database/sql/#pkg-variables
+			error.Message = "Not found User."
+			errorInResponse(w, http.StatusBadRequest, error)
+		} else {
+			log.Fatal(err)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	responseByJSON(w, "")
 }
 
 func handleRequests() {
@@ -260,8 +301,8 @@ func handleRequests() {
 	router.HandleFunc("/user/get", getUserInfo).Methods("GET")
 	router.HandleFunc("/user/update", updateUserInfo).Methods("PUT")
 
-	router.HandleFunc("/gacha/draw", createUserInfo).Methods("POST")
-	router.HandleFunc("/character/list", createUserInfo).Methods("GET")
+	router.HandleFunc("/gacha/draw", drawGachaHandler).Methods("POST")
+	router.HandleFunc("/character/list", getCharactersList).Methods("GET")
 
 	http.Handle("/", router)
 
