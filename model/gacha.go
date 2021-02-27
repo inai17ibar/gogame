@@ -29,35 +29,55 @@ type DrawGachaResponse struct {
 // dbインスタンス格納用
 var db *sql.DB
 
-func selectWeightRandom(itemWeights []int, times int) (lotteryResults []int) {
-	sort.Ints(itemWeights) // 重みの昇順でチェックしていくので重み一覧をソートする
+type LotteryItem struct {
+	Id     int
+	Weight int
+}
+
+func selectWeightRandom(items []LotteryItem, times int) (lotteryResults []int) {
+	// 重みの昇順でチェックしていくので重み一覧をソートする
+	sort.SliceStable(items, func(i, j int) bool { return items[i].Weight < items[j].Weight })
 	//TODO: 昇順で与えられなかった場合は警告する
 	//timesが0でもだめ
 
 	// 抽選結果チェックの基準となる境界値を生成
-	boundaries := make([]int, len(itemWeights)+1)
-	for i := 1; i < len(itemWeights)+1; i++ {
-		boundaries[i] = boundaries[i-1] + itemWeights[i-1]
+	boundaries := make([]int, len(items)+1)
+	indexs := make([]int, len(items)+1)
+	for i := 1; i < len(items)+1; i++ {
+		boundaries[i] = boundaries[i-1] + items[i-1].Weight
+		indexs[i] = items[i-1].Id
 	}
 	boundaries = boundaries[1:len(boundaries)] // 頭の0値は不要なので破棄
+	indexs = indexs[1:len(indexs)]
 
 	rand.Seed(time.Now().UnixNano())
 	// 境界検知用のスライス
-	result := make([]int, len(itemWeights))
+	result := make([]int, len(items))
 	// 結果格納用
-	var results []int //抽選結果を入力時のindexで示す
+	var results []int //抽選結果をidで示す
 
 	for i := 0; i < times; i++ {
 		draw := rand.Intn(boundaries[len(boundaries)-1]) + 1
 		fmt.Println(draw)
-		for i, boundary := range boundaries {
+		for j, boundary := range boundaries {
 			if draw <= boundary {
-				result[i]++
-				results = append(results, i)
+				result[j]++
+				results = append(results, indexs[j])
 				break
 			}
 		}
 	}
+	fmt.Printf("境界値: %v\n", boundaries)
+	fmt.Println("重み  想定      結果")
+	fmt.Println("-----------------------------")
+	for i := 0; i < len(items); i++ {
+		fmt.Printf("%4d  %f  %f\n",
+			items[i].Weight,
+			float64(items[i].Weight)/float64(boundaries[len(boundaries)-1]),
+			float64(result[i])/float64(times),
+		)
+	}
+
 	return results
 }
 
@@ -78,7 +98,14 @@ func ExecuteGacha(times int) ([]GachaResult, error) {
 	var gtype int
 	var start, end time.Time
 
-	weightRarity := []int{0, 0, 0, 0, 0}
+	items := []LotteryItem{
+		{Id: 1, Weight: 0},
+		{Id: 2, Weight: 0},
+		{Id: 3, Weight: 0},
+		{Id: 4, Weight: 0},
+		{Id: 5, Weight: 0},
+	}
+
 	//DBからレアリティ抽選の重みを読み込む
 	row, err := db.Query("select * from gogame_db.gacha_table where `name` = 'sample_gacha'")
 	if err != nil {
@@ -90,18 +117,16 @@ func ExecuteGacha(times int) ([]GachaResult, error) {
 
 	//上の書き方だと読み取れなかった。Queryは複数行、QueryRowが一行らしい
 	for row.Next() {
-		err := row.Scan(&id, &name, &gtype, &weightRarity[0],
-			&weightRarity[1], &weightRarity[2], &weightRarity[3], &weightRarity[4], &start, &end)
+		err := row.Scan(&id, &name, &gtype, &items[0].Weight,
+			&items[1].Weight, &items[2].Weight, &items[3].Weight, &items[4].Weight, &start, &end)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	fmt.Println(weightRarity)
-
 	//回数だけ抽選を実行する
 	var rarityResults []int
-	rarityResults = selectWeightRandom(weightRarity, times)
+	rarityResults = selectWeightRandom(items, times)
 	//e.g. results = {1, 1, 2, 5, 1}
 
 	fmt.Println(rarityResults)
