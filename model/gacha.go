@@ -34,7 +34,7 @@ type LotteryItem struct {
 	Weight int
 }
 
-func selectWeightRandom(items []LotteryItem, times int) (lotteryResults []int) {
+func selectWeightRandom(items []LotteryItem, times int) []int {
 	// 重みの昇順でチェックしていくので重み一覧をソートする
 	sort.SliceStable(items, func(i, j int) bool { return items[i].Weight < items[j].Weight })
 	//TODO: 昇順で与えられなかった場合は警告する
@@ -58,7 +58,7 @@ func selectWeightRandom(items []LotteryItem, times int) (lotteryResults []int) {
 
 	for i := 0; i < times; i++ {
 		draw := rand.Intn(boundaries[len(boundaries)-1]) + 1
-		fmt.Println(draw)
+		//fmt.Println(draw)
 		for j, boundary := range boundaries {
 			if draw <= boundary {
 				result[j]++
@@ -67,16 +67,16 @@ func selectWeightRandom(items []LotteryItem, times int) (lotteryResults []int) {
 			}
 		}
 	}
-	fmt.Printf("境界値: %v\n", boundaries)
-	fmt.Println("重み  想定      結果")
-	fmt.Println("-----------------------------")
-	for i := 0; i < len(items); i++ {
-		fmt.Printf("%4d  %f  %f\n",
-			items[i].Weight,
-			float64(items[i].Weight)/float64(boundaries[len(boundaries)-1]),
-			float64(result[i])/float64(times),
-		)
-	}
+	// fmt.Printf("境界値: %v\n", boundaries)
+	// fmt.Println("重み  想定      結果")
+	// fmt.Println("-----------------------------")
+	// for i := 0; i < len(items); i++ {
+	// 	fmt.Printf("%4d  %f  %f\n",
+	// 		items[i].Weight,
+	// 		float64(items[i].Weight)/float64(boundaries[len(boundaries)-1]),
+	// 		float64(result[i])/float64(times),
+	// 	)
+	// }
 
 	return results
 }
@@ -131,38 +131,49 @@ func ExecuteGacha(times int) ([]GachaResult, error) {
 
 	fmt.Println(rarityResults)
 
-	return results, nil
-
 	for i := 0; i < len(rarityResults); i++ {
 		//DBからキャラ抽選の重みとデータを読み込む
-		row, err = db.Query("select `characterid`, `weight` from gogame_db.gacha_characters_01_table where `rarity` = ?", rarityResults[id])
+		row, err = db.Query("select `characterid`, `weight` from gogame_db.gacha_characters_01_table where `rarity` = ?", rarityResults[i])
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer row.Close()
 
-		var chara_ids []int
-		var weights []int
-		j := 0
+		var tempId int
+		var tempWeight int
+		var characterItems []LotteryItem
 		for row.Next() {
-			if err := row.Scan(&chara_ids[j], &weights[j]); err != nil {
+			if err := row.Scan(&tempId, &tempWeight); err != nil {
 				log.Fatal(err)
 			}
-			//fmt.Println(id, weight)
+			characterItems = append(characterItems, LotteryItem{Id: tempId, Weight: tempWeight})
 		}
 
 		if err := row.Err(); err != nil {
 			log.Fatal(err)
 		}
+		fmt.Println(characterItems)
 
 		//抽選を実行する
+		var result []int
+		result = selectWeightRandom(characterItems, 1)
+
+		fmt.Println(result[0], rarityResults[i])
 
 		//抽選結果の名前を問い合わせる
+		character := GachaResult{CharacterId: string(result[0]), Name: ""}
+
+		row := db.QueryRow("select name from gogame_db.character_table where `id` = ?", result[0])
+		err = row.Scan(&character.Name)
+		if err := row.Err(); err != nil {
+			log.Fatal(err)
+		}
 
 		//抽選結果を格納する
-		gachaResult := GachaResult{CharacterId: "", Name: ""}
-		results = append(results, gachaResult)
+		results = append(results, character)
 	}
+
+	fmt.Println(results)
 
 	return results, nil
 }
