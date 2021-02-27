@@ -38,7 +38,6 @@ type LotteryItem struct {
 func selectWeightRandom(items []LotteryItem, times int) []int {
 	// 重みの昇順でチェックしていくので重み一覧をソートする
 	sort.SliceStable(items, func(i, j int) bool { return items[i].Weight < items[j].Weight })
-	//TODO: 昇順で与えられなかった場合は警告する
 	//timesが0でもだめ
 
 	// 抽選結果チェックの基準となる境界値を生成

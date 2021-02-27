@@ -243,7 +243,51 @@ func updateUserInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func getCharactersList(w http.ResponseWriter, r *http.Request) {
+	tokenString := r.Header.Get("x-token")
+	if tokenString == "" {
+		fmt.Println("Not found token")
+		return
+	}
 
+	//headerからtokenをとりだし、検証する
+	token, err := verifyToken(tokenString)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	userID, ok := claims[userKey].(string)
+	if !ok {
+		fmt.Println("not found claims or userid")
+	}
+
+	var characterList []Character
+	row, err := db.Query("select id, characterid from gogame_db.user_characters_table where `userid` = ?", userID)
+	if err != nil {
+		panic(err)
+	}
+	defer row.Close()
+
+	for row.Next() {
+		var character Character
+		err := row.Scan(&character.ID, &character.CharacterID)
+		if err != nil {
+			panic(err)
+		}
+		characterList = append(characterList, character)
+	}
+
+	//for _, chara := range characterList {
+	for i := 0; i < len(characterList); i++ {
+		row := db.QueryRow("select `name` from gogame_db.character_table where `id` = ?", characterList[i].CharacterID)
+		err = row.Scan(&characterList[i].Name)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	responseByJSON(w, CharactersListResponse{Characters: characterList})
 }
 
 func drawGachaHandler(w http.ResponseWriter, r *http.Request) {

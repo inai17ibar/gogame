@@ -7,5 +7,5 @@ type Character struct {
 }
 
 type CharactersListResponse struct {
-	Characters []Character `json:"times"`
+	Characters []Character `json:"characters"`
 }
