@@ -275,13 +275,24 @@ func drawGachaHandler(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		fmt.Println("not found claims or userid")
 	}
-	_ = userID
 
 	var results []GachaResult
 	results, err = ExecuteGacha(request.Times)
 	if err != nil {
 		fmt.Println(err)
 		return
+	}
+
+	//ガチャの結果をDBに保存する
+	for i := 0; i < len(results); i++ {
+		sql_query := "INSERT INTO gogame_db.user_characters_table (userid, characterid) VALUES (?, ?)"
+		_, err = db.Exec(sql_query, userID, results[i].CharacterId)
+		if err != nil {
+			fmt.Println(err)
+			error.Message = "SQLServer Error"
+			errorInResponse(w, http.StatusInternalServerError, error)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
