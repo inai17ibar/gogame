@@ -277,23 +277,15 @@ func drawGachaHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = userID
 
-	fmt.Println("Start gacha")
-	ExecuteGacha(request.Times)
-
-	//draw gacha
-	// _, err = db.Exec("update gogame_db.user_table set username = ? where id = ?", user.Name, userID)
-
-	// if err != nil {
-	// 	if err == sql.ErrNoRows { //https://golang.org/pkg/database/sql/#pkg-variables
-	// 		error.Message = "Not found User."
-	// 		errorInResponse(w, http.StatusBadRequest, error)
-	// 	} else {
-	// 		log.Fatal(err)
-	// 	}
-	// }
+	var results []GachaResult
+	results, err = ExecuteGacha(request.Times)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	responseByJSON(w, "")
+	responseByJSON(w, DrawGachaResponse{Results: results})
 }
 
 func handleRequests() {

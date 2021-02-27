@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/inai17ibar/gogame/tool"
@@ -14,7 +15,7 @@ import (
 )
 
 type GachaResult struct {
-	CharacterId string `json:"character_id"`
+	CharacterId string `json:"characterID"`
 	Name        string `json:"name"`
 }
 
@@ -23,7 +24,7 @@ type DrawGachaRequest struct {
 }
 
 type DrawGachaResponse struct {
-	Results []GachaResult `json:"times"`
+	Results []GachaResult `json:"results"`
 }
 
 // dbインスタンス格納用
@@ -152,16 +153,16 @@ func ExecuteGacha(times int) ([]GachaResult, error) {
 		if err := row.Err(); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(characterItems)
+		//fmt.Println(characterItems)
 
 		//抽選を実行する
 		var result []int
 		result = selectWeightRandom(characterItems, 1)
 
-		fmt.Println(result[0], rarityResults[i])
+		//fmt.Println(result[0], rarityResults[i])
 
 		//抽選結果の名前を問い合わせる
-		character := GachaResult{CharacterId: string(result[0]), Name: ""}
+		character := GachaResult{CharacterId: strconv.Itoa(result[0]), Name: ""}
 
 		row := db.QueryRow("select name from gogame_db.character_table where `id` = ?", result[0])
 		err = row.Scan(&character.Name)
@@ -173,7 +174,7 @@ func ExecuteGacha(times int) ([]GachaResult, error) {
 		results = append(results, character)
 	}
 
-	fmt.Println(results)
+	//fmt.Println(results)
 
 	return results, nil
 }
