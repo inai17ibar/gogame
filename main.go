@@ -247,15 +247,16 @@ func getCharactersList(w http.ResponseWriter, r *http.Request) {
 }
 
 func drawGachaHandler(w http.ResponseWriter, r *http.Request) {
-	var user User
+	var request DrawGachaRequest
 	var error Error
 
-	json.NewDecoder(r.Body).Decode(&user)
-	if user.Name == "" {
-		error.Message = "timesは必須です。"
+	json.NewDecoder(r.Body).Decode(&request)
+	if request.Times == 0 {
+		error.Message = "timesが0なので、ガチャを実行できません"
 		errorInResponse(w, http.StatusBadRequest, error)
 		return
 	}
+	fmt.Println("times:", request.Times)
 
 	tokenString := r.Header.Get("x-token")
 	if tokenString == "" {
@@ -274,18 +275,22 @@ func drawGachaHandler(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		fmt.Println("not found claims or userid")
 	}
+	_ = userID
+
+	fmt.Println("Start gacha")
+	ExecuteGacha(request.Times)
 
 	//draw gacha
-	_, err = db.Exec("update gogame_db.user_table set username = ? where id = ?", user.Name, userID)
+	// _, err = db.Exec("update gogame_db.user_table set username = ? where id = ?", user.Name, userID)
 
-	if err != nil {
-		if err == sql.ErrNoRows { //https://golang.org/pkg/database/sql/#pkg-variables
-			error.Message = "Not found User."
-			errorInResponse(w, http.StatusBadRequest, error)
-		} else {
-			log.Fatal(err)
-		}
-	}
+	// if err != nil {
+	// 	if err == sql.ErrNoRows { //https://golang.org/pkg/database/sql/#pkg-variables
+	// 		error.Message = "Not found User."
+	// 		errorInResponse(w, http.StatusBadRequest, error)
+	// 	} else {
+	// 		log.Fatal(err)
+	// 	}
+	// }
 
 	w.Header().Set("Content-Type", "application/json")
 	responseByJSON(w, "")

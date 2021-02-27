@@ -18,11 +18,11 @@ create table if not exists gogame_db.gacha_table
 	id INT AUTO_INCREMENT UNIQUE NOT NULL PRIMARY KEY,
     name varchar(64) UNIQUE NOT NULL DEFAULT '',
     type INT NOT NULL DEFAULT 0,
-    rarity_weight_1 FLOAT DEFAULT 52,
-    rarity_weight_2 FLOAT DEFAULT 30,
-    rarity_weight_3 FLOAT DEFAULT 12,
-    rarity_weight_4 FLOAT DEFAULT 4.5,
-    rarity_weight_5 FLOAT DEFAULT 1.5,
+    rarity1_weight INT DEFAULT 520,
+    rarity2_weight INT DEFAULT 300,
+    rarity3_weight INT DEFAULT 120,
+    rarity4_weight INT DEFAULT 45,
+    rarity5_weight INT DEFAULT 15,
     started_date datetime DEFAULT CURRENT_TIMESTAMP,
     end_date datetime DEFAULT NULL
 );
@@ -59,7 +59,7 @@ create table if not exists gogame_db.gacha_rarity_table
 	id INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
     gacha_id INT DEFAULT NULL,
     rarity INT DEFAULT 1 NOT NULL,
-    rarity_weight FLOAT DEFAULT 52 NOT NULL,
+    rarity_weight INT DEFAULT 520 NOT NULL,
     started_date datetime DEFAULT CURRENT_TIMESTAMP,
     end_date datetime DEFAULT NULL,
     UNIQUE(gacha_id, rarity)
