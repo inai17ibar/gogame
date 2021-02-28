@@ -112,10 +112,8 @@ func ExecuteGacha(times int) ([]GachaResult, error) {
 		panic(err)
 	}
 	defer row.Close()
-	// err = row.Scan(&id, &name, &gtype, &weightRarity[0],
-	// 	&weightRarity[1], &weightRarity[2], &weightRarity[3], &weightRarity[4], &start, &end)
 
-	//上の書き方だと読み取れなかった。Queryは複数行、QueryRowが一行らしい
+	//Queryは複数行、QueryRowが一行らしい
 	for row.Next() {
 		err := row.Scan(&id, &name, &gtype, &items[0].Weight,
 			&items[1].Weight, &items[2].Weight, &items[3].Weight, &items[4].Weight, &start, &end)
@@ -131,6 +129,7 @@ func ExecuteGacha(times int) ([]GachaResult, error) {
 
 	fmt.Println(rarityResults)
 
+	//ここもN+1問題になっている
 	for i := 0; i < len(rarityResults); i++ {
 		//DBからキャラ抽選の重みとデータを読み込む
 		row, err = db.Query("select `characterid`, `weight` from gogame_db.gacha_characters_01_table where `rarity` = ?", rarityResults[i])

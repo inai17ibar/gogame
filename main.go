@@ -262,7 +262,8 @@ func getCharactersList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var characterList []Character
-	row, err := db.Query("select id, characterid from gogame_db.user_characters_table where `userid` = ?", userID)
+	query := "select user_characters_table.`id`, user_characters_table.`characterid`, character_table.`name` from user_characters_table join character_table on user_characters_table.`characterid` = character_table.`id` where user_characters_table.`userid` = ?"
+	row, err := db.Query(query, userID)
 	if err != nil {
 		panic(err)
 	}
@@ -270,7 +271,7 @@ func getCharactersList(w http.ResponseWriter, r *http.Request) {
 
 	for row.Next() {
 		var character Character
-		err := row.Scan(&character.ID, &character.CharacterID)
+		err := row.Scan(&character.ID, &character.CharacterID, &character.Name)
 		if err != nil {
 			panic(err)
 		}
@@ -278,13 +279,13 @@ func getCharactersList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//for _, chara := range characterList {
-	for i := 0; i < len(characterList); i++ {
-		row := db.QueryRow("select `name` from gogame_db.character_table where `id` = ?", characterList[i].CharacterID)
-		err = row.Scan(&characterList[i].Name)
-		if err != nil {
-			panic(err)
-		}
-	}
+	// for i := 0; i < len(characterList); i++ {
+	// 	row := db.QueryRow("select `name` from gogame_db.character_table where `id` = ?", characterList[i].CharacterID)
+	// 	err = row.Scan(&characterList[i].Name)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// }
 
 	w.Header().Set("Content-Type", "application/json")
 	responseByJSON(w, CharactersListResponse{Characters: characterList})
@@ -329,8 +330,8 @@ func drawGachaHandler(w http.ResponseWriter, r *http.Request) {
 
 	//ガチャの結果をDBに保存する
 	for i := 0; i < len(results); i++ {
-		sql_query := "INSERT INTO gogame_db.user_characters_table (userid, characterid) VALUES (?, ?)"
-		_, err = db.Exec(sql_query, userID, results[i].CharacterId)
+		sqlQuery := "INSERT INTO gogame_db.user_characters_table (userid, characterid) VALUES (?, ?)"
+		_, err = db.Exec(sqlQuery, userID, results[i].CharacterId)
 		if err != nil {
 			fmt.Println(err)
 			error.Message = "SQLServer Error"
@@ -377,23 +378,6 @@ func main() {
 		panic(err)
 	}
 	log.Println("Connected to mysql.")
-
-	// //データベースへクエリを送信。引っ張ってきたデータがrowsに入る。
-	// rows, err := db.Query("SELECT * FROM gogame_db.user_table")
-
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-
-	// for rows.Next() {
-	// 	user := User{ID: 0, Name: "", Password: "", SessionId: 0}
-	// 	var time time.Time
-	// 	err := rows.Scan(&user.ID, &user.Name, &user.Password, &user.SessionId, &time)
-	// 	if err != nil {
-	// 		panic(err.Error())
-	// 	}
-	// 	fmt.Println(user.ID, user.Name, user.Password, time)
-	// }
 
 	handleRequests()
 }
